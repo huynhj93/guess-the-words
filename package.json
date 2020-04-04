@@ -1,0 +1,30 @@
+{
+  "name": "guess-the-words",
+  "version": "1.0.0",
+  "description": "getboard",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huynhj93/guess-the-words.git"
+  },
+  "keywords": [
+    "board"
+  ],
+  "author": "n/a",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/huynhj93/guess-the-words/issues"
+  },
+  "homepage": "https://github.com/huynhj93/guess-the-words#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "lodash": "^4.17.15",
+    "morgan": "^1.10.0",
+    "nodemon": "^2.0.2"
+  }
+}
