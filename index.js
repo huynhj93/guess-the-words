@@ -8,6 +8,8 @@ const express = require('express');
 const logger = require('morgan');
 const socketIo = require('socket.io')
 const _ = require('lodash');
+const cors = require('cors');
+const bodyparser = require('body-parser');
 const app = express();
 const port = 8080;
 const database = {};
@@ -46,7 +48,7 @@ function generateBoard() {
   console.log("selectedWords", selectedWords);
   console.log("selectedWords length", selectedWords.length)
   selectedWords.forEach((word, i) => {
-    wordRow.push( { word, color: shuffledColors[i] })
+    wordRow.push( { word, color: shuffledColors[i], toReveal: false })
     if ((i + 1) % 5 == 0) {
       board.push(wordRow)
       wordRow = [];
@@ -58,22 +60,37 @@ function generateBoard() {
 /** ===== End of Board helpers ======== */
 
 app.use(logger('dev')); 
+app.use(cors());
+app.use(bodyparser.json());
 
 app.get('/board', function (req, res) {
   if (_.isUndefined(database.board)) {
-    res.send('please create a new board first!');
+    res.status(404).json({ 
+      message: 'please create a new board first!' 
+    });
   } else {
+    console.log('board', database.board);
     res.json({
       board: database.board
     })
   }
-})
+});
 
 
 app.post('/board', function (req, res) {
   // Need to debounce or something
   database.board = generateBoard();
-  return res.status(200).send('ok');
-})
+  return res.status(200).json({
+    board: database.board
+  });
+});
+
+app.delete('/board', function (req, res) {
+  // Need to debounce or something
+  delete database.board;
+  return res.status(200).json({
+    message: 'deleted'
+  });
+});
 
 server.listen(port, () => console.log(`Socket runing at port: ${port}`))
