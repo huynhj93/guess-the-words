@@ -1,15 +1,27 @@
 // import https from 'https';
-// import http from 'http';
 // import path from 'path';
 // import config from './config/env';
 // import app from './config/express';
+const http = require('http')
 const fs = require('fs');
 const express = require('express');
 const logger = require('morgan');
+const socketIo = require('socket.io')
 const _ = require('lodash');
 const app = express();
 const port = 8080;
 const database = {};
+const server = http.createServer(app)
+const io = socketIo(server, {origins: '*:*'})
+const sala = io.of('public_chat')
+const messageKey = 'test_message'
+sala.on('connection', socket => {
+    console.log('New user connected', socket.id)
+    socket.on(messageKey, data => {
+        console.log('received: ', data)
+        sala.emit(messageKey, data)
+    })
+})
 
 /** ===== Board helpers ======== */
 const words = fs.readFileSync('codenames.txt').toString().split("\n");
@@ -64,4 +76,4 @@ app.post('/board', function (req, res) {
   return res.status(200).send('ok');
 })
 
-app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
+server.listen(port, () => console.log(`Socket runing at port: ${port}`))
