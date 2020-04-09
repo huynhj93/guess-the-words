@@ -18,7 +18,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {origins: '*:*'});
 
 const gameState = {
-  rooms: 0,
+  // rooms: 0,
   players: {}
 }
 
@@ -29,16 +29,16 @@ io.on('connection', socket => {
 
   // Create new game room and notify the creator of game
   socket.on('createGame', data => {
-    socket.join('room-' + ++gameState.rooms);
+    // socket.join('room-' + ++gameState.rooms);
     gameState.players[socket.id] = data.role;
-    socket.emit('newGame', {
-      room: 'room-' + gameState.rooms
-    });
+    // socket.emit('newGame', {
+    //   room: 'room-' + gameState.rooms
+    // });
   });
 
   //Connect new player to requested room
   socket.on('joinGame', data => {
-    socket.join(data.room);
+    // socket.join(data.room);
     gameState.players[socket.id] = data.role;
     // socket.emit('joiningGame', {
     //   board: gameState.board
@@ -49,14 +49,17 @@ io.on('connection', socket => {
   socket.on('clickTile', data => {
     gameState.board = data.board;
     console.log('server board', gameState.board);
-    socket.broadcast.to(data.room).emit('tileClicked', {
+    // socket.broadcast.to(data.room).emit('tileClicked', {
+    //   board: data.board
+    // });
+    socket.broadcast.emit('tileClicked', {
       board: data.board
     });
   });
 
-  socket.on('gameEnded', data => {
-    socket.leave(data.room);
-  });
+  // socket.on('gameEnded', data => {
+  //   socket.leave(data.room);
+  // });
 
   //A special namespace 'disconnect' for when a client disconnects
   socket.on('disconnect', () => {
