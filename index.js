@@ -13,22 +13,9 @@ const socketIo = require('socket.io');
 
 const app = express();
 const port = 8080;
-const database = {};
 const server = http.createServer(app);
 
 const io = socketIo(server, {origins: '*:*'});
-
-/** ===== Socket IO ======== */
-
-// const sala = io.of('public_chat');
-// const messageKey = 'test_message';
-// sala.on('connection', socket => {
-//     console.log('New user connected', socket.id);
-//     socket.on(messageKey, data => {
-//         console.log('received: ', data);
-//         sala.emit(messageKey, data);
-//     });
-// });
 
 const gameState = {
   rooms: 0,
@@ -38,10 +25,12 @@ const gameState = {
 //Setting up a socket with the namespace 'connection' for new sockets
 io.on('connection', socket => {
   console.log('New client connected', socket.id);
+  
 
   // Create new game room and notify the creator of game
-  socket.on('createGame', () => {
+  socket.on('createGame', data => {
     socket.join('room-' + ++gameState.rooms);
+    gameState.players[socket.id] = data.role;
     socket.emit('newGame', {
       room: 'room-' + gameState.rooms
     });
@@ -51,19 +40,27 @@ io.on('connection', socket => {
   socket.on('joinGame', data => {
     socket.join(data.room);
     gameState.players[socket.id] = data.role;
+    // socket.emit('joiningGame', {
+    //   board: gameState.board
+    // })
   })
 
   //Handle tile clicked
   socket.on('clickTile', data => {
+    gameState.board = data.board;
+    console.log('server board', gameState.board);
     socket.broadcast.to(data.room).emit('tileClicked', {
-      coord: data.coord,
-      room: data.room
+      board: data.board
     });
+  });
+
+  socket.on('gameEnded', data => {
+    socket.leave(data.room);
   });
 
   //A special namespace 'disconnect' for when a client disconnects
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    console.log('Client disconnected', socket.id);
     delete gameState.players[socket.id];
   });
 });
@@ -110,14 +107,14 @@ app.use(cors());
 app.use(bodyparser.json());
 
 app.get('/board', function (req, res) {
-  if (_.isUndefined(database.board)) {
+  if (_.isUndefined(gameState.board)) {
     res.status(404).json({ 
       message: 'please create a new board first!' 
     });
   } else {
-    //console.log('board', database.board);
+    //console.log('board', gameState.board);
     res.json({
-      board: database.board
+      board: gameState.board
     })
   }
 });
@@ -125,15 +122,16 @@ app.get('/board', function (req, res) {
 
 app.post('/board', function (req, res) {
   // Need to debounce or something
-  database.board = generateBoard();
+  gameState.board = generateBoard();
+  console.log("server new board", gameState.board);
   return res.status(200).json({
-    board: database.board
+    board: gameState.board
   });
 });
 
 app.delete('/board', function (req, res) {
   // Need to debounce or something
-  delete database.board;
+  delete gameState.board;
   return res.status(200).json({
     message: 'deleted'
   });
