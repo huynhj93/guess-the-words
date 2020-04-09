@@ -9,7 +9,6 @@ const logger = require('morgan');
 const _ = require('lodash');
 const cors = require('cors');
 const bodyparser = require('body-parser');
-
 const socketIo = require('socket.io');
 
 const app = express();
@@ -18,18 +17,61 @@ const database = {};
 const server = http.createServer(app);
 
 const io = socketIo(server, {origins: '*:*'});
-const sala = io.of('public_chat');
-const messageKey = 'test_message'
-sala.on('connection', socket => {
-    console.log('New user connected', socket.id);
-    socket.on(messageKey, data => {
-        console.log('received: ', data);
-        sala.emit(messageKey, data);
+
+/** ===== Socket IO ======== */
+
+// const sala = io.of('public_chat');
+// const messageKey = 'test_message';
+// sala.on('connection', socket => {
+//     console.log('New user connected', socket.id);
+//     socket.on(messageKey, data => {
+//         console.log('received: ', data);
+//         sala.emit(messageKey, data);
+//     });
+// });
+
+const gameState = {
+  rooms: 0,
+  players: {}
+}
+
+//Setting up a socket with the namespace 'connection' for new sockets
+io.on('connection', socket => {
+  console.log('New client connected', socket.id);
+
+  // Create new game room and notify the creator of game
+  socket.on('createGame', () => {
+    socket.join('room-' + ++gameState.rooms);
+    socket.emit('newGame', {
+      room: 'room-' + gameState.rooms
     });
+  });
+
+  //Connect new player to requested room
+  socket.on('joinGame', data => {
+    socket.join(data.room);
+    gameState.players[socket.id] = data.role;
+  })
+
+  //Handle tile clicked
+  socket.on('clickTile', data => {
+    socket.broadcast.to(data.room).emit('tileClicked', {
+      coord: data.coord,
+      room: data.room
+    });
+  });
+
+  //A special namespace 'disconnect' for when a client disconnects
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+    delete gameState.players[socket.id];
+  });
 });
 
+/** ===== End of Socket IO ======== */
+
 /** ===== Board helpers ======== */
-const words = fs.readFileSync('codenames.txt').toString().split("\n");
+const words = fs.readFileSync('codenames.txt').toString().split('\n');
 
 function getWords () {
   // Shuffle array and take first 25 elements
@@ -44,12 +86,12 @@ function generateBoard() {
   let neutrals = _.fill(Array(7), 'neutral');
   let black = ['black'];
   let colors = [ ...reds, ...blues, ...neutrals, ...black];
-  //console.log("colors length", colors.length);
+  //console.log('colors length', colors.length);
   let shuffledColors =  _.shuffle(colors);
   //console.log('shuffledColors:', shuffledColors);
   const selectedWords = getWords();
-  //console.log("selectedWords", selectedWords);
-  //console.log("selectedWords length", selectedWords.length);
+  //console.log('selectedWords', selectedWords);
+  //console.log('selectedWords length', selectedWords.length);
   selectedWords.forEach((word, i) => {
     wordRow.push({ word, color: shuffledColors[i], toReveal: false });
     if ((i + 1) % 5 == 0) {
@@ -61,6 +103,7 @@ function generateBoard() {
 }
 
 /** ===== End of Board helpers ======== */
+
 
 app.use(logger('dev')); 
 app.use(cors());
