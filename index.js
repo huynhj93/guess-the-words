@@ -18,8 +18,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {origins: '*:*'});
 
 const gameState = {
-  rooms: 0,
-  players: {}
+  numOfRooms: 0,
 }
 
 //Setting up a socket with the namespace 'connection' for new sockets
@@ -27,63 +26,56 @@ io.on('connection', socket => {
   console.log('New client connected', socket.id);
   
 
-  // Create new game room and notify the creator of game
-  socket.on('createGame', data => {
-    // socket.join('room-' + ++gameState.rooms);    
-    if (gameState.board) {
-      socket.emit('creatingGame', {
-        error: 'There is already a game in progress.'
-      });
-      // socket.on('confirm', () => {
-      //   gameState.board = generateBoard();
-      //   socket.emit('newGame', {
-      //   // room: 'room-' + gameState.rooms,
-      //   board: gameState.board,
-      //   });
-      // });
-    } else {
-      gameState.board = generateBoard();
-      gameState.players[socket.id] = data.role;
-      socket.emit('creatingGame', {
-      // room: 'room-' + gameState.rooms,
-      board: gameState.board,
-      });
-    }
-    
+  // Create new game room
+  socket.on('createGame', data => {    
+    ++gameState.numOfRooms;
+    let roomId = 'room-' + gameState.numOfRooms;
+    socket.join(roomId);
+    gameState[roomId] = {
+      board: generateBoard(),
+      players: {
+        [socket.id]: data.role,
+      }
+    };
+    //console.log('gameState', gameState);
+    socket.emit('creatingGame', {
+      roomId,
+      board: gameState[roomId].board,
+    });    
   });
 
   //Connect new player to requested room
   socket.on('joinGame', data => {
-    // socket.join(data.room);
-    
-    if (_.isUndefined(gameState.board)) {
+    if (_.isUndefined(gameState[data.roomId]) || _.isUndefined(gameState[data.roomId].board)) {
       socket.emit('joiningGame', {
-        error: 'No game in progress! Please start a new game.'
+        error: 'No game in progress with that Room ID!'
       });
     } else {
-      gameState.players[socket.id] = data.role;
+      socket.join(data.roomId);
+      gameState[data.roomId].players[socket.id] = data.role;
       socket.emit('joiningGame', {
-        board: gameState.board
+        roomId: data.roomId,
+        board: gameState[data.roomId].board
       });
     }
   })
 
   //Handle tile clicked
   socket.on('clickTile', data => {
-    gameState.board = data.board;
+    gameState[data.roomId].board = data.board;
     // console.log('server board', gameState.board);
     // socket.broadcast.to(data.room).emit('tileClicked', {
     //   board: data.board
     // });
-    socket.broadcast.emit('updateBoard', {
-      board: gameState.board
+    socket.broadcast.to(data.roomId).emit('updateBoard', {
+      board: gameState[data.roomId].board
     });
   });
 
-  socket.on('getNewBoard', () => {
-    delete gameState.board;
-    console.log('getNewBoard', gameState.board);
-    socket.broadcast.emit('updateBoard');
+  socket.on('getNewBoard', data => {
+    delete gameState[data.roomId].board;
+    //console.log('getNewBoard', gameState[data.roomId].board);
+    socket.broadcast.to(data.roomId).emit('updateBoard');
   });
 
   // socket.on('gameEnded', data => {
@@ -93,12 +85,12 @@ io.on('connection', socket => {
   //A special namespace 'disconnect' for when a client disconnects
   socket.on('disconnect', () => {
     console.log('Client disconnected', socket.id);
-    delete gameState.players[socket.id];
+    // delete gameState.players[socket.id];
     
-    // delete board if all players disconnect
-    if (Object.keys(gameState.players).length === 0) {
-      delete gameState.board;
-    }
+    // // delete board if all players disconnect
+    // if (Object.keys(gameState.players).length === 0) {
+    //   delete gameState.board;
+    // }
   });
 });
 
