@@ -25,7 +25,6 @@ const gameState = {
 io.on('connection', socket => {
   console.log('New client connected', socket.id);
   
-
   // Create new game room
   socket.on('createGame', data => {    
     ++gameState.numOfRooms;
@@ -46,46 +45,54 @@ io.on('connection', socket => {
 
   //Connect new player to requested room
   socket.on('joinGame', data => {
-    if (_.isUndefined(gameState[data.roomId]) || _.isUndefined(gameState[data.roomId].board)) {
+    const { role, roomId } = data;
+    if (_.isUndefined(gameState[roomId]) || _.isUndefined(gameState[roomId].board)) {
       socket.emit('joiningGame', {
         error: 'No game in progress with that Room ID!'
       });
     } else {
-      socket.join(data.roomId);
-      gameState[data.roomId].players[socket.id] = data.role;
+      socket.join(roomId);
+      gameState[roomId].players[socket.id] = role;
       socket.emit('joiningGame', {
-        roomId: data.roomId,
-        board: gameState[data.roomId].board
+        roomId: roomId,
+        board: gameState[roomId].board
       });
     }
   })
 
   //Handle tile clicked
   socket.on('clickTile', data => {
-    gameState[data.roomId].board = data.board;
-    // console.log('server board', gameState.board);
-    // socket.broadcast.to(data.room).emit('tileClicked', {
-    //   board: data.board
-    // });
-    socket.broadcast.to(data.roomId).emit('updateBoard', {
-      board: gameState[data.roomId].board
+    const { roomId } = data;
+    gameState[roomId].board = data.board;
+    socket.to(roomId).emit('updateBoard', {
+      board: gameState[roomId].board
     });
   });
 
   socket.on('getNewBoard', data => {
-    delete gameState[data.roomId].board;
+    const { roomId } = data;
+    gameState[roomId].board = generateBoard();
     //console.log('getNewBoard', gameState[data.roomId].board);
-    socket.broadcast.to(data.roomId).emit('updateBoard');
+    io.in(roomId).emit('updateBoard', {
+      board: gameState[roomId].board,
+      role: {}
+    });
   });
 
-  // socket.on('gameEnded', data => {
-  //   socket.leave(data.room);
-  // });
+  socket.on('leaveRoom', data => {
+    const { roomId } = data;
+    console.log('player', socket.id, 'left', roomId);
+    socket.leave(roomId);
+    delete gameState[roomId].players[socket.id];
+    
+    // if (Object.keys(gameState[roomId].players).length === 0) {
+    //   delete gameState[roomId]
+    // }
+  });
 
   //A special namespace 'disconnect' for when a client disconnects
   socket.on('disconnect', () => {
     console.log('Client disconnected', socket.id);
-    // delete gameState.players[socket.id];
     
     // // delete board if all players disconnect
     // if (Object.keys(gameState.players).length === 0) {
