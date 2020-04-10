@@ -31,18 +31,42 @@ io.on('connection', socket => {
   socket.on('createGame', data => {
     // socket.join('room-' + ++gameState.rooms);
     gameState.players[socket.id] = data.role;
-    // socket.emit('newGame', {
-    //   room: 'room-' + gameState.rooms
-    // });
+    
+    if (gameState.board) {
+      socket.emit('newGame', {
+        error: 'There is already a game in progress.'
+      });
+      // socket.on('confirm', () => {
+      //   gameState.board = generateBoard();
+      //   socket.emit('newGame', {
+      //   // room: 'room-' + gameState.rooms,
+      //   board: gameState.board,
+      //   });
+      // });
+    } else {
+      gameState.board = generateBoard();
+      socket.emit('newGame', {
+      // room: 'room-' + gameState.rooms,
+      board: gameState.board,
+      });
+    }
+    
   });
 
   //Connect new player to requested room
   socket.on('joinGame', data => {
     // socket.join(data.room);
     gameState.players[socket.id] = data.role;
-    // socket.emit('joiningGame', {
-    //   board: gameState.board
-    // })
+    
+    if (_.isUndefined(gameState.board)) {
+      socket.emit('joiningGame', {
+        error: 'No game in progress! Please start a new game.'
+      });
+    } else {
+      socket.emit('joiningGame', {
+        board: gameState.board
+      });
+    }
   })
 
   //Handle tile clicked
@@ -52,9 +76,15 @@ io.on('connection', socket => {
     // socket.broadcast.to(data.room).emit('tileClicked', {
     //   board: data.board
     // });
-    socket.broadcast.emit('tileClicked', {
-      board: data.board
+    socket.broadcast.emit('updateBoard', {
+      board: gameState.board
     });
+  });
+
+  socket.on('getNewBoard', () => {
+    delete gameState.board;
+    console.log('getNewBoard', gameState.board);
+    socket.broadcast.emit('updateBoard');
   });
 
   // socket.on('gameEnded', data => {
