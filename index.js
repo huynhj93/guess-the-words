@@ -18,7 +18,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {origins: '*:*'});
 
 const gameState = {
-  // rooms: 0,
+  rooms: 0,
   players: {}
 }
 
@@ -29,11 +29,9 @@ io.on('connection', socket => {
 
   // Create new game room and notify the creator of game
   socket.on('createGame', data => {
-    // socket.join('room-' + ++gameState.rooms);
-    gameState.players[socket.id] = data.role;
-    
+    // socket.join('room-' + ++gameState.rooms);    
     if (gameState.board) {
-      socket.emit('newGame', {
+      socket.emit('creatingGame', {
         error: 'There is already a game in progress.'
       });
       // socket.on('confirm', () => {
@@ -45,7 +43,8 @@ io.on('connection', socket => {
       // });
     } else {
       gameState.board = generateBoard();
-      socket.emit('newGame', {
+      gameState.players[socket.id] = data.role;
+      socket.emit('creatingGame', {
       // room: 'room-' + gameState.rooms,
       board: gameState.board,
       });
@@ -56,13 +55,13 @@ io.on('connection', socket => {
   //Connect new player to requested room
   socket.on('joinGame', data => {
     // socket.join(data.room);
-    gameState.players[socket.id] = data.role;
     
     if (_.isUndefined(gameState.board)) {
       socket.emit('joiningGame', {
         error: 'No game in progress! Please start a new game.'
       });
     } else {
+      gameState.players[socket.id] = data.role;
       socket.emit('joiningGame', {
         board: gameState.board
       });
@@ -72,7 +71,7 @@ io.on('connection', socket => {
   //Handle tile clicked
   socket.on('clickTile', data => {
     gameState.board = data.board;
-    console.log('server board', gameState.board);
+    // console.log('server board', gameState.board);
     // socket.broadcast.to(data.room).emit('tileClicked', {
     //   board: data.board
     // });
@@ -95,6 +94,11 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     console.log('Client disconnected', socket.id);
     delete gameState.players[socket.id];
+    
+    // delete board if all players disconnect
+    if (Object.keys(gameState.players).length === 0) {
+      delete gameState.board;
+    }
   });
 });
 
