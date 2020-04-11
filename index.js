@@ -64,6 +64,7 @@ io.on('connection', socket => {
   socket.on('clickTile', data => {
     const { roomId } = data;
     gameState[roomId].board = data.board;
+    // emits to all except sender
     socket.to(roomId).emit('updateBoard', {
       board: gameState[roomId].board
     });
@@ -72,7 +73,7 @@ io.on('connection', socket => {
   socket.on('getNewBoard', data => {
     const { roomId } = data;
     gameState[roomId].board = generateBoard();
-    //console.log('getNewBoard', gameState[data.roomId].board);
+    // emits to everyone including sender
     io.in(roomId).emit('updateBoard', {
       board: gameState[roomId].board,
       role: {}
@@ -81,7 +82,7 @@ io.on('connection', socket => {
 
   socket.on('leaveRoom', data => {
     const { roomId } = data;
-    console.log('player', socket.id, 'left', roomId);
+    //console.log('player', socket.id, 'left', roomId);
     socket.leave(roomId);
     delete gameState[roomId].players[socket.id];
     
@@ -114,11 +115,12 @@ function getWords () {
 function generateBoard() {
   let board = [];
   let wordRow = [];
-  let reds = _.fill(Array(9), 'red');
+  let reds = _.fill(Array(8), 'red');
   let blues = _.fill(Array(8), 'blue');
+  let random = _.sample(['red', 'blue']);
   let neutrals = _.fill(Array(7), 'neutral');
   let black = ['black'];
-  let colors = [ ...reds, ...blues, ...neutrals, ...black];
+  let colors = [ ...reds, ...blues, random, ...neutrals, ...black];
   //console.log('colors length', colors.length);
   let shuffledColors =  _.shuffle(colors);
   //console.log('shuffledColors:', shuffledColors);
