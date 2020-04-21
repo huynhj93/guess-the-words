@@ -9,12 +9,39 @@ const logger = require('morgan');
 const _ = require('lodash');
 const cors = require('cors');
 const bodyparser = require('body-parser');
-const socketIo = require('socket.io');
 
+// Initialize server
 const app = express();
 const port = 8080;
 const server = http.createServer(app);
 
+// Postgres client 
+const pgconfig = require('./config/pgconfig');
+const { Pool } = require('pg'); 
+const pgClient = new Pool({ 
+  user: pgconfig.pgUser, 
+  host: pgconfig.pgHost, 
+  database: pgconfig.pgDatabase, 
+  password: pgconfig.pgPassword, 
+  port: pgconfig.pgPort 
+}); 
+pgClient.on('error', () => console.log('Lost Postgres connection')); 
+
+// pgClient 
+//   .query( 
+//     ` 
+//   CREATE TABLE IF NOT EXISTS items ( 
+//     id uuid, 
+//     item_name TEXT NOT NUll, 
+//     complete BOOLEAN DEFAULT false, 
+//     PRIMARY KEY (id) 
+//   ) 
+// ` 
+//   ) 
+//   .catch(err => console.log(err)); 
+
+// Socket IO
+const socketIo = require('socket.io');
 const io = socketIo(server, {origins: '*:*'});
 
 const gameState = {
@@ -175,4 +202,4 @@ app.delete('/board', function (req, res) {
   });
 });
 
-server.listen(port, () => console.log(`Socket running at port: ${port}`));
+server.listen(port, () => console.log(`Socket running on port: ${port}`));

@@ -1,5 +1,5 @@
 {
-  "name": "guess-the-words",
+  "name": "guess-the-words-api",
   "version": "1.0.0",
   "description": "getboard",
   "main": "index.js",
@@ -28,6 +28,8 @@
     "lodash": "^4.17.15",
     "morgan": "^1.10.0",
     "nodemon": "^2.0.2",
+    "objection": "^2.1.3",
+    "pg": "^8.0.2",
     "socket.io": "^2.3.0"
   }
 }
